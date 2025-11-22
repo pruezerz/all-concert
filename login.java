@@ -1,163 +1,318 @@
 import javax.swing.*;
-import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import javax.swing.border.EmptyBorder;
-// import javax.swing.border.LineBorder; // No longer needed directly
+import java.awt.*;
+import java.awt.event.*;
+import java.awt.geom.RoundRectangle2D;
+import java.io.File;
+import javax.imageio.ImageIO;
+import org.json.JSONObject;
 
-public class login extends JFrame implements ActionListener {
+public class Login extends JFrame {
 
-    // ประกาศ Components ที่จำเป็น
-    private JTextField userField;
-    private JPasswordField passField;
-    private JButton loginButton;
-    private JLabel messageLabel;
-
-    public login() {
-        // ตั้งค่าหน้าต่าง (JFrame)
-        super("Login Application");
+    public Login() {
+        setTitle("All Concert - Login");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setUndecorated(true); // Remove window decorations
-        setExtendedState(JFrame.MAXIMIZED_BOTH); // Set to full screen
+        setSize(1000, 700);
+        setLocationRelativeTo(null);
 
-        // สร้าง JPanel และใช้ Layout Manager
-        JPanel mainPanel = new JPanel(new GridBagLayout());
-        mainPanel.setBackground(Color.WHITE);
+        // Main Panel with Dark Red Background
+        JPanel mainPanel = new JPanel() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                Graphics2D g2 = (Graphics2D) g;
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(new Color(80, 0, 0)); // Dark Red
+                g2.fillRect(0, 0, getWidth(), getHeight());
+            }
+        };
+        mainPanel.setLayout(new GridBagLayout());
         add(mainPanel);
 
         GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(10, 10, 10, 10); // Padding
-
-        // Title "ล็อคอิน"
-        JLabel titleLabel = new JLabel("Log in");
-        titleLabel.setFont(new Font("SansSerif", Font.BOLD, 36));
+        gbc.insets = new Insets(10, 10, 10, 10);
         gbc.gridx = 0;
         gbc.gridy = 0;
-        gbc.gridwidth = 2;
         gbc.anchor = GridBagConstraints.CENTER;
+
+        // Logo
+        try {
+            // Assuming logo is in file/logo.png relative to project root
+            ImageIcon logoIcon = new ImageIcon("file/logo.png");
+            Image img = logoIcon.getImage();
+            // Keep aspect ratio - scale to max width/height of 150px
+            int originalWidth = img.getWidth(null);
+            int originalHeight = img.getHeight(null);
+            int maxSize = 150;
+            double scale = Math.min((double)maxSize/originalWidth, (double)maxSize/originalHeight);
+            int scaledWidth = (int)(originalWidth * scale);
+            int scaledHeight = (int)(originalHeight * scale);
+            Image scaledImg = img.getScaledInstance(scaledWidth, scaledHeight, Image.SCALE_SMOOTH); 
+            JLabel logoLabel = new JLabel(new ImageIcon(scaledImg));
+            mainPanel.add(logoLabel, gbc);
+        } catch (Exception e) {
+            JLabel errorLabel = new JLabel("Logo not found");
+            errorLabel.setForeground(Color.WHITE);
+            mainPanel.add(errorLabel, gbc);
+        }
+
+        // "Log In" Title
+        gbc.gridy++;
+        JLabel titleLabel = new JLabel("Log In");
+        titleLabel.setFont(new Font("SansSerif", Font.BOLD, 48));
+        titleLabel.setForeground(Color.WHITE);
+        gbc.insets = new Insets(10, 10, 30, 10);
         mainPanel.add(titleLabel, gbc);
 
-        // 1. Label "Username"
-        JLabel usernameLabel = new JLabel("Username");
-        usernameLabel.setFont(new Font("SansSerif", Font.BOLD, 24));
-        gbc.gridx = 0;
-        gbc.gridy = 1; // Shifted down
-        gbc.gridwidth = 2;
-        gbc.anchor = GridBagConstraints.WEST;
-        mainPanel.add(usernameLabel, gbc);
-
-        // 2. ช่องชื่อผู้ใช้ (Username Field)
-        userField = new JTextField(20);
-        userField.setPreferredSize(new Dimension(300, 40));
-        userField.setFont(new Font("SansSerif", Font.PLAIN, 16));
-        userField.setBorder(new RoundedBorder(10, Color.LIGHT_GRAY)); // Apply rounded border
-        userField.setText("Enter your username"); // Placeholder text
-        userField.setForeground(Color.GRAY);
-        userField.addFocusListener(new java.awt.event.FocusAdapter() {
-            public void focusGained(java.awt.event.FocusEvent evt) {
-                if (userField.getText().equals("Enter your username")) {
-                    userField.setText("");
-                    userField.setForeground(Color.BLACK);
-                }
-            }
-            public void focusLost(java.awt.event.FocusEvent evt) {
-                if (userField.getText().isEmpty()) {
-                    userField.setText("Enter your username");
-                    userField.setForeground(Color.GRAY);
-                }
-            }
-        });
-        gbc.gridy = 2; // Shifted down
-        gbc.fill = GridBagConstraints.HORIZONTAL;
-        mainPanel.add(userField, gbc);
-
-        // 3. Label "Password"
-        JLabel passwordLabel = new JLabel("Password");
-        passwordLabel.setFont(new Font("SansSerif", Font.BOLD, 24));
-        gbc.gridy = 3; // Shifted down
-        mainPanel.add(passwordLabel, gbc);
-
-        // 4. ช่องรหัสผ่าน (Password Field)
-        passField = new JPasswordField(20);
-        passField.setPreferredSize(new Dimension(300, 40));
-        passField.setFont(new Font("SansSerif", Font.PLAIN, 16));
-        passField.setBorder(new RoundedBorder(10, Color.LIGHT_GRAY)); // Apply rounded border
-        passField.setEchoChar((char) 0); // Remove echo character (dots)
-        passField.setText("Enter your password"); // Placeholder text
-        passField.setForeground(Color.GRAY);
-        passField.addFocusListener(new java.awt.event.FocusAdapter() {
-            public void focusGained(java.awt.event.FocusEvent evt) {
-                if (new String(passField.getPassword()).equals("Enter your password")) {
-                    passField.setText("");
-                    passField.setForeground(Color.BLACK);
-                    passField.setEchoChar('*'); // Set echo character back when typing
-                }
-            }
-            public void focusLost(java.awt.event.FocusEvent evt) {
-                if (new String(passField.getPassword()).isEmpty()) {
-                    passField.setEchoChar((char) 0); // Remove echo character when empty
-                    passField.setText("Enter your password");
-                    passField.setForeground(Color.GRAY);
-                }
-            }
-        });
-        gbc.gridy = 4; // Shifted down
-        mainPanel.add(passField, gbc);
-
-        // Adjust gridy for login button after removing checkbox
-        // 5. ปุ่ม Login ("Sign in")
-        loginButton = new JButton("Sign in");
-        loginButton.addActionListener(this);
-        loginButton.setBackground(new Color(30, 144, 255)); // Dodger Blue
-        loginButton.setForeground(Color.WHITE);
-        loginButton.setFont(new Font("SansSerif", Font.BOLD, 18));
-        loginButton.setPreferredSize(new Dimension(300, 50));
-        loginButton.setBorder(new RoundedBorder(10, new Color(30, 144, 255))); // Apply rounded border
-        loginButton.setFocusPainted(false); // Remove focus border
-        gbc.gridy = 5; // Changed from 4 to 5
-        gbc.gridwidth = 2;
-        gbc.fill = GridBagConstraints.HORIZONTAL;
+        // Username Label
+        gbc.gridy++;
         gbc.anchor = GridBagConstraints.CENTER;
-        mainPanel.add(loginButton, gbc);
+        gbc.insets = new Insets(5, 0, 5, 0);
+        JLabel userLabel = new JLabel("Username");
+        userLabel.setFont(new Font("SansSerif", Font.PLAIN, 18));
+        userLabel.setForeground(Color.WHITE);
+        // Create a container for the form to align items nicely
+        JPanel formPanel = new JPanel();
+        formPanel.setOpaque(false);
+        formPanel.setLayout(new BoxLayout(formPanel, BoxLayout.Y_AXIS));
         
-        // 6. ข้อความสำหรับแสดงผลการล็อกอิน
-        messageLabel = new JLabel(" ");
-        messageLabel.setFont(new Font("SansSerif", Font.PLAIN, 14));
-        messageLabel.setForeground(Color.RED);
-        gbc.gridy = 6; // Changed from 5 to 6
-        gbc.gridwidth = 2;
-        gbc.anchor = GridBagConstraints.CENTER;
-        mainPanel.add(messageLabel, gbc);
+        userLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        formPanel.add(userLabel);
+        formPanel.add(Box.createVerticalStrut(10));
 
-        setVisible(true); // แสดงหน้าต่าง
+        // Username Field
+        JTextField userField = new RoundedTextField(20);
+        userField.setFont(new Font("SansSerif", Font.PLAIN, 16));
+        userField.setForeground(Color.WHITE);
+        userField.setCaretColor(Color.WHITE);
+        userField.setBackground(new Color(80, 0, 0)); // Match background
+        userField.setText("Username"); // Placeholder
+        userField.setMaximumSize(new Dimension(400, 50));
+        userField.setPreferredSize(new Dimension(400, 50));
+        userField.setAlignmentX(Component.CENTER_ALIGNMENT);
+        formPanel.add(userField);
+        
+        formPanel.add(Box.createVerticalStrut(20));
+
+        // Password Label
+        JLabel passLabel = new JLabel("Password");
+        passLabel.setFont(new Font("SansSerif", Font.PLAIN, 18));
+        passLabel.setForeground(Color.WHITE);
+        passLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        formPanel.add(passLabel);
+        formPanel.add(Box.createVerticalStrut(10));
+
+        // Password Field
+        JPasswordField passField = new RoundedPasswordField(20);
+        passField.setFont(new Font("SansSerif", Font.PLAIN, 16));
+        passField.setForeground(Color.WHITE);
+        passField.setCaretColor(Color.WHITE);
+        passField.setBackground(new Color(80, 0, 0));
+        passField.setText("Password"); // Placeholder
+        passField.setEchoChar((char)0); // Show text initially
+        passField.setMaximumSize(new Dimension(400, 50));
+        passField.setPreferredSize(new Dimension(400, 50));
+        passField.setAlignmentX(Component.CENTER_ALIGNMENT);
+        
+        formPanel.add(passField);
+
+        formPanel.add(Box.createVerticalStrut(40));
+
+        // Login Button
+        JButton loginButton = new RoundedButton("Login");
+        loginButton.setFont(new Font("SansSerif", Font.BOLD, 20));
+        loginButton.setForeground(new Color(80, 0, 0));
+        loginButton.setBackground(Color.WHITE);
+        loginButton.setMaximumSize(new Dimension(200, 50));
+        loginButton.setPreferredSize(new Dimension(200, 50));
+        loginButton.setAlignmentX(Component.CENTER_ALIGNMENT);
+        
+        // Login Action
+        ActionListener loginAction = e -> {
+            String username = userField.getText();
+            String password = String.valueOf(passField.getPassword());
+            
+            if (username.isEmpty() || username.equals("Username")) {
+                JOptionPane.showMessageDialog(this, "Please enter username", "Error", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+            
+            if (password.isEmpty() || password.equals("Password")) {
+                JOptionPane.showMessageDialog(this, "Please enter password", "Error", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+            
+            // Call Supabase login
+            JSONObject result = SupabaseConfig.loginUser(username, password);
+            
+            if (result.has("error") && result.getBoolean("error")) {
+                JOptionPane.showMessageDialog(this, result.getString("message"), "Login Failed", JOptionPane.ERROR_MESSAGE);
+            } else {
+                String role = result.optString("role", "user");
+                int userId = result.getInt("id");
+                String userName = result.getString("username");
+                
+                // Navigate based on role
+                if (role.equals("admin")) {
+                    new AdminDashboard(userId, userName);
+                    this.dispose();
+                } else {
+                    new ConcertList(userId, userName);
+                    this.dispose();
+                }
+            }
+        };
+        
+        loginButton.addActionListener(loginAction);
+        
+        // Add Enter key listener to username and password fields
+        userField.addActionListener(loginAction);
+        passField.addActionListener(loginAction);
+        
+        formPanel.add(loginButton);
+
+        formPanel.add(Box.createVerticalStrut(30));
+
+        // Footer Text
+        JPanel footerPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
+        footerPanel.setOpaque(false);
+        footerPanel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        
+        JLabel footerText = new JLabel("If you don't have an account yet, ");
+        footerText.setFont(new Font("SansSerif", Font.PLAIN, 16));
+        footerText.setForeground(Color.WHITE);
+        
+        JLabel registerLink = new JLabel("Register");
+        registerLink.setFont(new Font("SansSerif", Font.BOLD, 16));
+        registerLink.setForeground(Color.WHITE);
+        registerLink.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        
+        // Register Link Action
+        registerLink.addMouseListener(new MouseAdapter() {
+            public void mouseClicked(MouseEvent e) {
+                new Register();
+                dispose();
+            }
+        });
+        
+        footerPanel.add(footerText);
+        footerPanel.add(registerLink);
+        formPanel.add(footerPanel);
+
+        mainPanel.add(formPanel, gbc);
+
+        // Placeholder Logic
+        userField.addFocusListener(new FocusAdapter() {
+            public void focusGained(FocusEvent e) {
+                if (userField.getText().equals("Username")) {
+                    userField.setText("");
+                }
+            }
+            public void focusLost(FocusEvent e) {
+                if (userField.getText().isEmpty()) {
+                    userField.setText("Username");
+                }
+            }
+        });
+
+        passField.addFocusListener(new FocusAdapter() {
+            public void focusGained(FocusEvent e) {
+                if (String.valueOf(passField.getPassword()).equals("Password")) {
+                    passField.setText("");
+                    passField.setEchoChar('•');
+                }
+            }
+            public void focusLost(FocusEvent e) {
+                if (String.valueOf(passField.getPassword()).isEmpty()) {
+                    passField.setText("Password");
+                    passField.setEchoChar((char)0);
+                }
+            }
+        });
+
+        setVisible(true);
     }
 
-    // 3. การจัดการเหตุการณ์ (Event Handling) เมื่อผู้ใช้กดปุ่ม
-    @Override
-    public void actionPerformed(ActionEvent e) {
-        if (e.getSource() == loginButton) {
-            String username = userField.getText();
-            String password = new String(passField.getPassword()); 
+    // Custom Rounded TextField
+    class RoundedTextField extends JTextField {
+        private int radius;
+        public RoundedTextField(int radius) {
+            this.radius = radius;
+            setOpaque(false);
+            setBorder(new EmptyBorder(10, 20, 10, 20));
+        }
+        @Override
+        protected void paintComponent(Graphics g) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            g2.setColor(getBackground());
+            g2.fillRoundRect(0, 0, getWidth()-1, getHeight()-1, radius, radius);
+            super.paintComponent(g);
+            g2.dispose();
+        }
+        @Override
+        protected void paintBorder(Graphics g) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            g2.setColor(Color.WHITE);
+            g2.setStroke(new BasicStroke(2));
+            g2.drawRoundRect(0, 0, getWidth()-1, getHeight()-1, radius, radius);
+            g2.dispose();
+        }
+    }
 
-            // ตรวจสอบ Username และ Password (ส่วนจำลอง)
-            if (username.equals("admin") && password.equals("1234")) {
-                messageLabel.setText("Login Successful!");
-                messageLabel.setForeground(new Color(34, 139, 34)); // Forest Green
-                // โค้ดเพื่อไปยังหน้าถัดไป
+    // Custom Rounded PasswordField
+    class RoundedPasswordField extends JPasswordField {
+        private int radius;
+        public RoundedPasswordField(int radius) {
+            this.radius = radius;
+            setOpaque(false);
+            setBorder(new EmptyBorder(10, 20, 10, 20));
+        }
+        @Override
+        protected void paintComponent(Graphics g) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            g2.setColor(getBackground());
+            g2.fillRoundRect(0, 0, getWidth()-1, getHeight()-1, radius, radius);
+            super.paintComponent(g);
+            g2.dispose();
+        }
+        @Override
+        protected void paintBorder(Graphics g) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            g2.setColor(Color.WHITE);
+            g2.setStroke(new BasicStroke(2));
+            g2.drawRoundRect(0, 0, getWidth()-1, getHeight()-1, radius, radius);
+            g2.dispose();
+        }
+    }
+
+    // Custom Rounded Button
+    class RoundedButton extends JButton {
+        public RoundedButton(String text) {
+            super(text);
+            setContentAreaFilled(false);
+            setFocusPainted(false);
+            setBorderPainted(false);
+        }
+        @Override
+        protected void paintComponent(Graphics g) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            if (getModel().isPressed()) {
+                g2.setColor(getBackground().darker());
             } else {
-                messageLabel.setText("Invalid Credentials.");
-                messageLabel.setForeground(Color.RED);
+                g2.setColor(getBackground());
             }
+            g2.fillRoundRect(0, 0, getWidth(), getHeight(), 20, 20);
+            super.paintComponent(g);
+            g2.dispose();
         }
     }
 
     public static void main(String[] args) {
-        // รัน GUI บน Event Dispatch Thread (Best Practice)
-        SwingUtilities.invokeLater(new Runnable() {
-            @Override
-            public void run() {
-                new login();
-            }
-        });
+        SwingUtilities.invokeLater(() -> new Login());
     }
 }
