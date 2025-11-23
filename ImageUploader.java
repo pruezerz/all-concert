@@ -1,58 +1,58 @@
 import java.io.*;
 import java.net.*;
 import java.nio.file.Files;
-import java.util.Base64;
-import org.json.JSONObject;
 
 public class ImageUploader {
-    // ImgBB API key (free tier - replace with your own from https://api.imgbb.com/)
-    private static final String API_KEY = "e89e5cf373575cf53b63cdc65435fc89";
-    private static final String UPLOAD_URL = "https://api.imgbb.com/1/upload";
+    // Catbox.moe - Fast, free, no API key needed
+    private static final String UPLOAD_URL = "https://catbox.moe/user/api.php";
     
     /**
-     * Upload image file to ImgBB and return the URL
+     * Upload image file to Catbox.moe and return the URL
      * @param imageFile The image file to upload
      * @return The URL of the uploaded image, or null if upload fails
      */
     public static String uploadImage(File imageFile) {
         try {
-            // Read file and convert to base64
-            byte[] fileContent = Files.readAllBytes(imageFile.toPath());
-            String encodedImage = Base64.getEncoder().encodeToString(fileContent);
+            String boundary = "----WebKitFormBoundary" + System.currentTimeMillis();
             
-            // Create connection
-            URL url = new URL(UPLOAD_URL + "?key=" + API_KEY);
-            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            HttpURLConnection conn = (HttpURLConnection) new URL(UPLOAD_URL).openConnection();
             conn.setRequestMethod("POST");
             conn.setDoOutput(true);
-            conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
+            conn.setRequestProperty("Content-Type", "multipart/form-data; boundary=" + boundary);
             
-            // Prepare form data
-            String formData = "image=" + URLEncoder.encode(encodedImage, "UTF-8");
-            
-            // Send request
-            try (OutputStream os = conn.getOutputStream()) {
-                byte[] input = formData.getBytes("UTF-8");
-                os.write(input, 0, input.length);
+            try (OutputStream os = conn.getOutputStream();
+                 PrintWriter writer = new PrintWriter(new OutputStreamWriter(os, "UTF-8"), true)) {
+                
+                // Add reqtype field
+                writer.append("--" + boundary).append("\r\n");
+                writer.append("Content-Disposition: form-data; name=\"reqtype\"").append("\r\n");
+                writer.append("\r\n");
+                writer.append("fileupload").append("\r\n");
+                
+                // Add file field
+                writer.append("--" + boundary).append("\r\n");
+                writer.append("Content-Disposition: form-data; name=\"fileToUpload\"; filename=\"")
+                      .append(imageFile.getName()).append("\"").append("\r\n");
+                writer.append("Content-Type: application/octet-stream").append("\r\n");
+                writer.append("\r\n");
+                writer.flush();
+                
+                // Write file content
+                Files.copy(imageFile.toPath(), os);
+                os.flush();
+                
+                writer.append("\r\n");
+                writer.append("--" + boundary + "--").append("\r\n");
+                writer.flush();
             }
             
             // Read response
             int responseCode = conn.getResponseCode();
             if (responseCode == 200) {
                 BufferedReader in = new BufferedReader(new InputStreamReader(conn.getInputStream()));
-                StringBuilder response = new StringBuilder();
-                String line;
-                while ((line = in.readLine()) != null) {
-                    response.append(line);
-                }
+                String uploadedUrl = in.readLine(); // Catbox returns just the URL
                 in.close();
-                
-                // Parse JSON response
-                JSONObject jsonResponse = new JSONObject(response.toString());
-                if (jsonResponse.getBoolean("success")) {
-                    JSONObject data = jsonResponse.getJSONObject("data");
-                    return data.getString("url"); // Return the image URL
-                }
+                return uploadedUrl;
             }
             
             return null;
@@ -72,27 +72,41 @@ public class ImageUploader {
         try {
             progressCallback.onProgress(10, "Reading file...");
             
-            // Read file and convert to base64
-            byte[] fileContent = Files.readAllBytes(imageFile.toPath());
-            progressCallback.onProgress(30, "Encoding image...");
+            String boundary = "----WebKitFormBoundary" + System.currentTimeMillis();
             
-            String encodedImage = Base64.getEncoder().encodeToString(fileContent);
-            progressCallback.onProgress(50, "Uploading...");
+            progressCallback.onProgress(30, "Preparing upload...");
             
-            // Create connection
-            URL url = new URL(UPLOAD_URL + "?key=" + API_KEY);
-            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            HttpURLConnection conn = (HttpURLConnection) new URL(UPLOAD_URL).openConnection();
             conn.setRequestMethod("POST");
             conn.setDoOutput(true);
-            conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
+            conn.setRequestProperty("Content-Type", "multipart/form-data; boundary=" + boundary);
             
-            // Prepare form data
-            String formData = "image=" + URLEncoder.encode(encodedImage, "UTF-8");
+            progressCallback.onProgress(50, "Uploading...");
             
-            // Send request
-            try (OutputStream os = conn.getOutputStream()) {
-                byte[] input = formData.getBytes("UTF-8");
-                os.write(input, 0, input.length);
+            try (OutputStream os = conn.getOutputStream();
+                 PrintWriter writer = new PrintWriter(new OutputStreamWriter(os, "UTF-8"), true)) {
+                
+                // Add reqtype field
+                writer.append("--" + boundary).append("\r\n");
+                writer.append("Content-Disposition: form-data; name=\"reqtype\"").append("\r\n");
+                writer.append("\r\n");
+                writer.append("fileupload").append("\r\n");
+                
+                // Add file field
+                writer.append("--" + boundary).append("\r\n");
+                writer.append("Content-Disposition: form-data; name=\"fileToUpload\"; filename=\"")
+                      .append(imageFile.getName()).append("\"").append("\r\n");
+                writer.append("Content-Type: application/octet-stream").append("\r\n");
+                writer.append("\r\n");
+                writer.flush();
+                
+                // Write file content
+                Files.copy(imageFile.toPath(), os);
+                os.flush();
+                
+                writer.append("\r\n");
+                writer.append("--" + boundary + "--").append("\r\n");
+                writer.flush();
             }
             
             progressCallback.onProgress(80, "Processing...");
@@ -101,23 +115,11 @@ public class ImageUploader {
             int responseCode = conn.getResponseCode();
             if (responseCode == 200) {
                 BufferedReader in = new BufferedReader(new InputStreamReader(conn.getInputStream()));
-                StringBuilder response = new StringBuilder();
-                String line;
-                while ((line = in.readLine()) != null) {
-                    response.append(line);
-                }
+                String uploadedUrl = in.readLine();
                 in.close();
                 
-                progressCallback.onProgress(90, "Completing...");
-                
-                // Parse JSON response
-                JSONObject jsonResponse = new JSONObject(response.toString());
-                if (jsonResponse.getBoolean("success")) {
-                    JSONObject data = jsonResponse.getJSONObject("data");
-                    String imageUrl = data.getString("url");
-                    progressCallback.onProgress(100, "Done!");
-                    return imageUrl;
-                }
+                progressCallback.onProgress(100, "Done!");
+                return uploadedUrl;
             }
             
             progressCallback.onProgress(0, "Upload failed");
