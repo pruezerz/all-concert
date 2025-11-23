@@ -543,6 +543,16 @@ public class SupabaseConfig {
     // Delete concert
     public static boolean deleteConcert(int concertId) {
         try {
+            // First, delete all bookings related to this concert
+            URL bookingsUrl = new URL(SUPABASE_URL + "/rest/v1/bookings?concert_id=eq." + concertId);
+            HttpURLConnection bookingsConn = (HttpURLConnection) bookingsUrl.openConnection();
+            bookingsConn.setRequestMethod("DELETE");
+            bookingsConn.setRequestProperty("apikey", SUPABASE_KEY);
+            bookingsConn.setRequestProperty("Authorization", "Bearer " + SUPABASE_KEY);
+            bookingsConn.getResponseCode();
+            bookingsConn.disconnect();
+            
+            // Then delete the concert
             URL url = new URL(SUPABASE_URL + "/rest/v1/concerts?id=eq." + concertId);
             HttpURLConnection conn = (HttpURLConnection) url.openConnection();
             conn.setRequestMethod("DELETE");
@@ -550,10 +560,23 @@ public class SupabaseConfig {
             conn.setRequestProperty("Authorization", "Bearer " + SUPABASE_KEY);
 
             int responseCode = conn.getResponseCode();
+            
+            if (responseCode != 200 && responseCode != 204) {
+                BufferedReader in = new BufferedReader(new InputStreamReader(conn.getErrorStream(), "UTF-8"));
+                StringBuilder response = new StringBuilder();
+                String inputLine;
+                while ((inputLine = in.readLine()) != null) {
+                    response.append(inputLine);
+                }
+                in.close();
+                System.out.println("Delete failed with code " + responseCode + ": " + response.toString());
+            }
+            
             conn.disconnect();
             
             return responseCode == 200 || responseCode == 204;
         } catch (Exception e) {
+            e.printStackTrace();
             return false;
         }
     }

@@ -3,6 +3,7 @@ import javax.swing.border.EmptyBorder;
 import javax.swing.table.*;
 import java.awt.*;
 import java.awt.event.*;
+import java.io.File;
 import org.json.JSONObject;
 import org.json.JSONArray;
 
@@ -231,17 +232,20 @@ public class AdminDashboard extends JFrame {
             
             // Browse button for file selection
             JButton browseBtn = new JButton("Browse...");
+            
+            final File[] selectedFile = {null};
+            
             browseBtn.addActionListener(e -> {
                 JFileChooser fileChooser = new JFileChooser();
                 fileChooser.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter(
                     "Image files", "jpg", "jpeg", "png", "gif"));
                 int result = fileChooser.showOpenDialog(dialog);
                 if (result == JFileChooser.APPROVE_OPTION) {
-                    String path = fileChooser.getSelectedFile().getAbsolutePath();
-                    imageUrlField.setText(path);
+                    selectedFile[0] = fileChooser.getSelectedFile();
+                    imageUrlField.setText(selectedFile[0].getName() + " (Will upload on save)");
                     
                     // Show preview
-                    ImageIcon icon = new ImageIcon(path);
+                    ImageIcon icon = new ImageIcon(selectedFile[0].getAbsolutePath());
                     Image img = icon.getImage().getScaledInstance(200, 200, Image.SCALE_SMOOTH);
                     imagePreview.setIcon(new ImageIcon(img));
                     imagePreview.setText("");
@@ -278,7 +282,6 @@ public class AdminDashboard extends JFrame {
                     String artist = artistField.getText().trim();
                     String date = dateField.getText().trim();
                     String venue = venueField.getText().trim();
-                    String imageUrl = imageUrlField.getText().trim();
                     double price = Double.parseDouble(priceField.getText());
                     int seats = Integer.parseInt(seatsField.getText());
                     String desc = descArea.getText().trim();
@@ -288,14 +291,54 @@ public class AdminDashboard extends JFrame {
                         return;
                     }
                     
-                    JSONObject result = SupabaseConfig.addConcert(name, artist, date, venue, price, seats, desc, imageUrl);
-                    
-                    if (result.has("error")) {
-                        JOptionPane.showMessageDialog(dialog, "Failed to add concert: " + result.getString("message"), "Error", JOptionPane.ERROR_MESSAGE);
+                    // If user selected a local file, upload it first
+                    if (selectedFile[0] != null) {
+                        saveBtn.setEnabled(false);
+                        browseBtn.setEnabled(false);
+                        imagePreview.setText("Uploading...");
+                        
+                        new Thread(() -> {
+                            String uploadedUrl = ImageUploader.uploadImageWithProgress(selectedFile[0], 
+                                (percentage, message) -> {
+                                    SwingUtilities.invokeLater(() -> {
+                                        imagePreview.setText(message + " " + percentage + "%");
+                                    });
+                                });
+                            
+                            SwingUtilities.invokeLater(() -> {
+                                if (uploadedUrl != null) {
+                                    // Upload successful, save concert
+                                    JSONObject result = SupabaseConfig.addConcert(name, artist, date, venue, price, seats, desc, uploadedUrl);
+                                    
+                                    if (result.has("error")) {
+                                        JOptionPane.showMessageDialog(dialog, "Failed to add concert: " + result.getString("message"), "Error", JOptionPane.ERROR_MESSAGE);
+                                        saveBtn.setEnabled(true);
+                                        browseBtn.setEnabled(true);
+                                    } else {
+                                        JOptionPane.showMessageDialog(dialog, "Concert added successfully!", "Success", JOptionPane.INFORMATION_MESSAGE);
+                                        dialog.dispose();
+                                        loadConcerts();
+                                    }
+                                } else {
+                                    JOptionPane.showMessageDialog(dialog, "Failed to upload image!", "Error", JOptionPane.ERROR_MESSAGE);
+                                    saveBtn.setEnabled(true);
+                                    browseBtn.setEnabled(true);
+                                    imagePreview.setText("Upload failed");
+                                }
+                            });
+                        }).start();
                     } else {
-                        JOptionPane.showMessageDialog(dialog, "Concert added successfully!", "Success", JOptionPane.INFORMATION_MESSAGE);
-                        dialog.dispose();
-                        loadConcerts();
+                        // No file selected, use URL from text field
+                        String imageUrl = imageUrlField.getText().trim();
+                        JSONObject result = SupabaseConfig.addConcert(name, artist, date, venue, price, seats, desc, imageUrl);
+                        
+                        if (result.has("error")) {
+                            JOptionPane.showMessageDialog(dialog, "Failed to add concert: " + result.getString("message"), "Error", JOptionPane.ERROR_MESSAGE);
+                        } else {
+                            JOptionPane.showMessageDialog(dialog, "Concert added successfully!", "Success", JOptionPane.INFORMATION_MESSAGE);
+                            dialog.dispose();
+                            loadConcerts();
+                        }
                     }
                 } catch (NumberFormatException ex) {
                     JOptionPane.showMessageDialog(dialog, "Please enter valid numbers for price and seats!", "Error", JOptionPane.ERROR_MESSAGE);
@@ -366,6 +409,8 @@ public class AdminDashboard extends JFrame {
             }
             
             // Browse button for file selection
+            final File[] selectedEditFile = new File[1];
+            
             JButton browseBtn = new JButton("Browse...");
             browseBtn.addActionListener(e -> {
                 JFileChooser fileChooser = new JFileChooser();
@@ -373,11 +418,11 @@ public class AdminDashboard extends JFrame {
                     "Image files", "jpg", "jpeg", "png", "gif"));
                 int result = fileChooser.showOpenDialog(dialog);
                 if (result == JFileChooser.APPROVE_OPTION) {
-                    String path = fileChooser.getSelectedFile().getAbsolutePath();
-                    imageUrlField.setText(path);
+                    selectedEditFile[0] = fileChooser.getSelectedFile();
+                    imageUrlField.setText(selectedEditFile[0].getName() + " (Will upload on save)");
                     
                     // Show preview
-                    ImageIcon icon = new ImageIcon(path);
+                    ImageIcon icon = new ImageIcon(selectedEditFile[0].getAbsolutePath());
                     Image img = icon.getImage().getScaledInstance(200, 200, Image.SCALE_SMOOTH);
                     imagePreview.setIcon(new ImageIcon(img));
                     imagePreview.setText("");
@@ -414,7 +459,6 @@ public class AdminDashboard extends JFrame {
                     String artist = artistField.getText().trim();
                     String date = dateField.getText().trim();
                     String venue = venueField.getText().trim();
-                    String imageUrl = imageUrlField.getText().trim();
                     double price = Double.parseDouble(priceField.getText());
                     int seats = Integer.parseInt(seatsField.getText());
                     String desc = descArea.getText().trim();
@@ -424,14 +468,54 @@ public class AdminDashboard extends JFrame {
                         return;
                     }
                     
-                    JSONObject result = SupabaseConfig.updateConcert(concertId, name, artist, date, venue, price, seats, desc, imageUrl);
-                    
-                    if (result.has("error")) {
-                        JOptionPane.showMessageDialog(dialog, "Failed to update concert: " + result.getString("message"), "Error", JOptionPane.ERROR_MESSAGE);
+                    // If user selected a local file, upload it first
+                    if (selectedEditFile[0] != null) {
+                        saveBtn.setEnabled(false);
+                        browseBtn.setEnabled(false);
+                        imagePreview.setText("Uploading...");
+                        
+                        new Thread(() -> {
+                            String uploadedUrl = ImageUploader.uploadImageWithProgress(selectedEditFile[0], 
+                                (percentage, message) -> {
+                                    SwingUtilities.invokeLater(() -> {
+                                        imagePreview.setText(message + " " + percentage + "%");
+                                    });
+                                });
+                            
+                            SwingUtilities.invokeLater(() -> {
+                                if (uploadedUrl != null) {
+                                    // Upload successful, update concert
+                                    JSONObject result = SupabaseConfig.updateConcert(concertId, name, artist, date, venue, price, seats, desc, uploadedUrl);
+                                    
+                                    if (result.has("error")) {
+                                        JOptionPane.showMessageDialog(dialog, "Failed to update concert: " + result.getString("message"), "Error", JOptionPane.ERROR_MESSAGE);
+                                        saveBtn.setEnabled(true);
+                                        browseBtn.setEnabled(true);
+                                    } else {
+                                        JOptionPane.showMessageDialog(dialog, "Concert updated successfully!", "Success", JOptionPane.INFORMATION_MESSAGE);
+                                        dialog.dispose();
+                                        loadConcerts();
+                                    }
+                                } else {
+                                    JOptionPane.showMessageDialog(dialog, "Failed to upload image!", "Error", JOptionPane.ERROR_MESSAGE);
+                                    saveBtn.setEnabled(true);
+                                    browseBtn.setEnabled(true);
+                                    imagePreview.setText("Upload failed");
+                                }
+                            });
+                        }).start();
                     } else {
-                        JOptionPane.showMessageDialog(dialog, "Concert updated successfully!", "Success", JOptionPane.INFORMATION_MESSAGE);
-                        dialog.dispose();
-                        loadConcerts();
+                        // No file selected, use URL from text field
+                        String imageUrl = imageUrlField.getText().trim();
+                        JSONObject result = SupabaseConfig.updateConcert(concertId, name, artist, date, venue, price, seats, desc, imageUrl);
+                        
+                        if (result.has("error")) {
+                            JOptionPane.showMessageDialog(dialog, "Failed to update concert: " + result.getString("message"), "Error", JOptionPane.ERROR_MESSAGE);
+                        } else {
+                            JOptionPane.showMessageDialog(dialog, "Concert updated successfully!", "Success", JOptionPane.INFORMATION_MESSAGE);
+                            dialog.dispose();
+                            loadConcerts();
+                        }
                     }
                 } catch (NumberFormatException ex) {
                     JOptionPane.showMessageDialog(dialog, "Please enter valid numbers for price and seats!", "Error", JOptionPane.ERROR_MESSAGE);

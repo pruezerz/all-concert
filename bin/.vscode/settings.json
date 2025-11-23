@@ -1,0 +1,7 @@
+{
+    "java.project.sourcePaths": ["."],
+    "java.project.outputPath": "bin",
+    "java.project.referencedLibraries": [
+        "json-20231013.jar"
+    ]
+}
