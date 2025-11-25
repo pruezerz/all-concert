@@ -200,43 +200,96 @@ public class PaymentPage extends JFrame {
         panel.add(titleLabel);
         panel.add(Box.createVerticalStrut(20));
         
-        // QR Code (Mock)
+        // QR Code (Using API - Load in background)
         JPanel qrPanel = new JPanel() {
+            private Image qrImage;
+            private boolean loading = true;
+            private String errorMsg = null;
+            
+            {
+                // Load QR code in background thread
+                new Thread(() -> {
+                    try {
+                        // Build payment URL
+                        String concertName = java.net.URLEncoder.encode(concert.getString("name"), "UTF-8");
+                        String artist = java.net.URLEncoder.encode(concert.getString("artist"), "UTF-8");
+                        String date = concert.getString("date");
+                        String venue = java.net.URLEncoder.encode(concert.getString("venue"), "UTF-8");
+                        String seatList = java.net.URLEncoder.encode(String.join(", ", selectedSeats), "UTF-8");
+                        
+                        String paymentUrl = String.format(
+                            "https://pruezerz.github.io/all-concert/payment/?ref=%s&userId=%d&concertId=%d&concert=%s&artist=%s&date=%s&venue=%s&zone=%s&seats=%s&qty=%d&amount=%.2f",
+                            bookingReference,
+                            userId,
+                            concert.getInt("id"),
+                            concertName,
+                            artist,
+                            date,
+                            venue,
+                            selectedZone,
+                            seatList,
+                            selectedSeats.size(),
+                            totalPrice
+                        );
+                        
+                        // Try multiple QR code APIs
+                        String[] qrApis = {
+                            "https://api.qrserver.com/v1/create-qr-code/?size=350x350&data=" + java.net.URLEncoder.encode(paymentUrl, "UTF-8"),
+                            "https://chart.googleapis.com/chart?cht=qr&chs=350x350&chl=" + java.net.URLEncoder.encode(paymentUrl, "UTF-8")
+                        };
+                        
+                        for (String qrApiUrl : qrApis) {
+                            try {
+                                qrImage = javax.imageio.ImageIO.read(new java.net.URI(qrApiUrl).toURL());
+                                if (qrImage != null) break;
+                            } catch (Exception e) {
+                                System.out.println("Failed to load from: " + qrApiUrl);
+                            }
+                        }
+                        
+                        loading = false;
+                        repaint();
+                    } catch (Exception ex) {
+                        ex.printStackTrace();
+                        loading = false;
+                        errorMsg = "Failed to load QR code";
+                        repaint();
+                    }
+                }).start();
+            }
+            
             @Override
             protected void paintComponent(Graphics g) {
                 super.paintComponent(g);
                 Graphics2D g2 = (Graphics2D) g;
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 
-                // White background
-                g2.setColor(Color.WHITE);
-                g2.fillRect(20, 20, 360, 360);
-                
-                // Mock QR pattern
-                g2.setColor(Color.BLACK);
-                Random rand = new Random(bookingReference.hashCode()); // Use hash for consistent pattern
-                int blockSize = 12;
-                for (int i = 0; i < 30; i++) {
-                    for (int j = 0; j < 30; j++) {
-                        if (rand.nextBoolean()) {
-                            g2.fillRect(20 + i * blockSize, 20 + j * blockSize, blockSize, blockSize);
-                        }
-                    }
+                if (qrImage != null) {
+                    g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+                    
+                    // Center the QR code
+                    int x = (getWidth() - 350) / 2;
+                    int y = (getHeight() - 350) / 2;
+                    g2.drawImage(qrImage, x, y, 350, 350, this);
+                } else if (loading) {
+                    // Loading animation
+                    g2.setColor(Color.WHITE);
+                    g2.setFont(new Font("SansSerif", Font.PLAIN, 16));
+                    String msg = "Loading QR Code...";
+                    FontMetrics fm = g2.getFontMetrics();
+                    int x = (getWidth() - fm.stringWidth(msg)) / 2;
+                    int y = getHeight() / 2;
+                    g2.drawString(msg, x, y);
+                } else if (errorMsg != null) {
+                    // Error message
+                    g2.setColor(new Color(255, 100, 100));
+                    g2.setFont(new Font("SansSerif", Font.PLAIN, 14));
+                    String msg = errorMsg;
+                    FontMetrics fm = g2.getFontMetrics();
+                    int x = (getWidth() - fm.stringWidth(msg)) / 2;
+                    int y = getHeight() / 2;
+                    g2.drawString(msg, x, y);
                 }
-                
-                // Corner markers
-                g2.setColor(Color.BLACK);
-                drawCornerMarker(g2, 30, 30);
-                drawCornerMarker(g2, 310, 30);
-                drawCornerMarker(g2, 30, 310);
-            }
-            
-            private void drawCornerMarker(Graphics2D g2, int x, int y) {
-                g2.fillRect(x, y, 50, 50);
-                g2.setColor(Color.WHITE);
-                g2.fillRect(x + 10, y + 10, 30, 30);
-                g2.setColor(Color.BLACK);
-                g2.fillRect(x + 15, y + 15, 20, 20);
             }
         };
         qrPanel.setBackground(new Color(80, 15, 15));
@@ -246,8 +299,15 @@ public class PaymentPage extends JFrame {
         panel.add(qrPanel);
         panel.add(Box.createVerticalStrut(30));
         
+        // Payment URL info label
+        JLabel urlInfoLabel = new JLabel("<html><center>Scan QR code or click link below</center></html>");
+        urlInfoLabel.setFont(new Font("SansSerif", Font.PLAIN, 14));
+        urlInfoLabel.setForeground(Color.WHITE);
+        urlInfoLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        panel.add(urlInfoLabel);
+        panel.add(Box.createVerticalStrut(10));
+        
         // Payment URL (clickable)
-        String paymentUrl = "http://localhost:8080/payment?ref=" + bookingReference;
         JLabel urlLabel = new JLabel("<html><u>" + "Click here to open payment page" + "</u></html>");
         urlLabel.setFont(new Font("SansSerif", Font.PLAIN, 14));
         urlLabel.setForeground(new Color(100, 150, 255));
@@ -288,10 +348,12 @@ public class PaymentPage extends JFrame {
             // Option 1: Use local file (works without server)
             // String paymentUrl = String.format("file:///%s/payment/index.html?...", ...);
             
-            // Option 2: Use localhost server (better for production)
+            // Option 2: Use GitHub Pages (production)
             String paymentUrl = String.format(
-                "http://localhost:8080/index.html?ref=%s&concert=%s&artist=%s&date=%s&venue=%s&zone=%s&seats=%s&qty=%d&amount=%.2f",
+                "https://pruezerz.github.io/all-concert/payment/?ref=%s&userId=%d&concertId=%d&concert=%s&artist=%s&date=%s&venue=%s&zone=%s&seats=%s&qty=%d&amount=%.2f",
                 bookingReference,
+                userId,
+                concert.getInt("id"),
                 concertName,
                 artist,
                 date,
@@ -320,22 +382,15 @@ public class PaymentPage extends JFrame {
         String status = PaymentMockDB.getPaymentStatus(bookingReference);
         
         if ("PAID".equals(status)) {
-            // Complete booking
-            int concertId = concert.getInt("id");
+            // Payment already processed by HTML page - just show confirmation
             String seatNumbers = String.join(", ", selectedSeats);
             
-            JSONObject result = SupabaseConfig.createBooking(userId, concertId, seatNumbers, selectedSeats.size(), totalPrice);
-            
-            if (result.has("error") && result.getBoolean("error")) {
-                JOptionPane.showMessageDialog(this, "Booking failed: " + result.getString("message"), "Error", JOptionPane.ERROR_MESSAGE);
-            } else {
-                JOptionPane.showMessageDialog(this, 
-                    "Payment successful!\n\nBooking Reference: " + bookingReference + "\nSeats: " + seatNumbers, 
-                    "Success", 
-                    JOptionPane.INFORMATION_MESSAGE);
-                new ConcertList(userId, username);
-                dispose();
-            }
+            JOptionPane.showMessageDialog(this, 
+                "Payment successful!\n\nBooking Reference: " + bookingReference + "\nSeats: " + seatNumbers, 
+                "Success", 
+                JOptionPane.INFORMATION_MESSAGE);
+            new ConcertList(userId, username);
+            dispose();
         } else if ("PENDING".equals(status)) {
             JOptionPane.showMessageDialog(this, 
                 "Payment is still pending.\nPlease complete the payment and try again.", 

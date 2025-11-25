@@ -370,9 +370,15 @@
     </div>
 
     <script>
+        // Supabase Configuration
+        const SUPABASE_URL = 'https://rmzrcpkrjxntgetjwbqr.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJtenJjcGtyanhudGdldGp3YnFyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM4MjU3MzUsImV4cCI6MjA3OTQwMTczNX0.4GrzN8TYRAsAP5y7u4wMRI_wHX_1hXCom_Zv6oS5ol8';
+
         // Get URL parameters
         const urlParams = new URLSearchParams(window.location.search);
         const bookingRef = urlParams.get('ref') || 'N/A';
+        const userId = urlParams.get('userId') || '';
+        const concertId = urlParams.get('concertId') || '';
         const concertName = urlParams.get('concert') || 'N/A';
         const artist = urlParams.get('artist') || 'N/A';
         const date = urlParams.get('date') || 'N/A';
@@ -406,19 +412,63 @@
         });
 
         // Pay button
-        document.getElementById('payButton').addEventListener('click', function() {
+        document.getElementById('payButton').addEventListener('click', async function() {
+            // Validate required data
+            if (!userId || !concertId || !seats || seats === 'N/A') {
+                alert('Missing booking information. Please try again from the application.');
+                return;
+            }
+
             // Hide form, show loading
             document.getElementById('paymentForm').style.display = 'none';
             document.getElementById('loadingSection').style.display = 'block';
 
             // Simulate payment processing (2 seconds)
-            setTimeout(() => {
-                // Store payment status in localStorage (simulate backend)
-                localStorage.setItem('payment_' + bookingRef, 'PAID');
-                
-                // Show success message
-                document.getElementById('loadingSection').style.display = 'none';
-                document.getElementById('successSection').style.display = 'block';
+            setTimeout(async () => {
+                try {
+                    // Create booking in Supabase
+                    const bookingData = {
+                        user_id: parseInt(userId),
+                        concert_id: parseInt(concertId),
+                        seat_numbers: decodeURIComponent(seats),
+                        quantity: parseInt(quantity),
+                        total_price: parseFloat(totalAmount),
+                        booking_reference: bookingRef,
+                        payment_method: selectedMethod,
+                        payment_status: 'PAID',
+                        booking_date: new Date().toISOString()
+                    };
+
+                    const response = await fetch(SUPABASE_URL + '/rest/v1/bookings', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'apikey': SUPABASE_KEY,
+                            'Authorization': 'Bearer ' + SUPABASE_KEY,
+                            'Prefer': 'return=representation'
+                        },
+                        body: JSON.stringify(bookingData)
+                    });
+
+                    if (response.ok) {
+                        // Success - store status in localStorage for Java app to check
+                        localStorage.setItem('payment_' + bookingRef, 'PAID');
+                        
+                        // Show success message
+                        document.getElementById('loadingSection').style.display = 'none';
+                        document.getElementById('successSection').style.display = 'block';
+                    } else {
+                        const error = await response.text();
+                        throw new Error('Booking failed: ' + error);
+                    }
+                } catch (error) {
+                    console.error('Payment error:', error);
+                    alert('Payment failed: ' + error.message + '\n\nPlease try again or contact support.');
+                    
+                    // Show form again
+                    document.getElementById('loadingSection').style.display = 'none';
+                    document.getElementById('paymentForm').style.display = 'block';
+                }
             }, 2000);
         });
 
