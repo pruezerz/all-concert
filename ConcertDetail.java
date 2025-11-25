@@ -10,7 +10,6 @@ public class ConcertDetail extends JFrame {
     private int userId;
     private String username;
     private JSONObject concert;
-    private JSpinner quantitySpinner;
     
     public ConcertDetail(int userId, String username, JSONObject concert) {
         this.userId = userId;
@@ -19,11 +18,11 @@ public class ConcertDetail extends JFrame {
         
         setTitle("Concert Details");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setSize(900, 700);
+        setSize(1200, 800);
         setLocationRelativeTo(null);
         
         JPanel mainPanel = new JPanel(new BorderLayout());
-        mainPanel.setBackground(new Color(80, 0, 0));
+        mainPanel.setBackground(new Color(100, 20, 20));
         add(mainPanel);
         
         // Top Bar
@@ -39,13 +38,29 @@ public class ConcertDetail extends JFrame {
     
     private JPanel createTopBar() {
         JPanel topBar = new JPanel(new BorderLayout());
-        topBar.setBackground(new Color(80, 0, 0));
-        topBar.setBorder(new EmptyBorder(15, 20, 15, 20));
+        topBar.setBackground(new Color(120, 25, 25));
+        topBar.setBorder(new EmptyBorder(15, 30, 15, 30));
+        
+        // Left: Logo + Back Button
+        JPanel leftPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 15, 0));
+        leftPanel.setOpaque(false);
+        
+        try {
+            ImageIcon logoIcon = new ImageIcon("file/logo.png");
+            Image img = logoIcon.getImage().getScaledInstance(60, 60, Image.SCALE_SMOOTH);
+            JLabel logoLabel = new JLabel(new ImageIcon(img));
+            leftPanel.add(logoLabel);
+        } catch (Exception e) {
+            JLabel logoText = new JLabel("ALL CONCERT");
+            logoText.setFont(new Font("SansSerif", Font.BOLD, 24));
+            logoText.setForeground(Color.WHITE);
+            leftPanel.add(logoText);
+        }
         
         JButton backButton = new JButton("← Back");
         backButton.setFont(new Font("SansSerif", Font.PLAIN, 16));
         backButton.setForeground(Color.WHITE);
-        backButton.setBackground(new Color(100, 0, 0));
+        backButton.setBackground(new Color(100, 20, 20));
         backButton.setFocusPainted(false);
         backButton.setBorderPainted(false);
         backButton.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
@@ -53,8 +68,61 @@ public class ConcertDetail extends JFrame {
             new ConcertList(userId, username);
             dispose();
         });
+        leftPanel.add(backButton);
         
-        topBar.add(backButton, BorderLayout.WEST);
+        // Right: Booking History + Logout icons
+        JPanel rightPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 15, 0));
+        rightPanel.setOpaque(false);
+        
+        // Booking History Button
+        JButton bookingBtn = new JButton();
+        try {
+            ImageIcon bookingIcon = new ImageIcon("file/history booking.png");
+            Image img = bookingIcon.getImage().getScaledInstance(35, 35, Image.SCALE_SMOOTH);
+            bookingBtn.setIcon(new ImageIcon(img));
+        } catch (Exception e) {
+            bookingBtn.setText("📋");
+        }
+        bookingBtn.setBorderPainted(false);
+        bookingBtn.setContentAreaFilled(false);
+        bookingBtn.setFocusPainted(false);
+        bookingBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        bookingBtn.setToolTipText("My Bookings");
+        bookingBtn.addActionListener(e -> {
+            new MyBookings(userId, username);
+            dispose();
+        });
+        
+        // Logout Button
+        JButton logoutBtn = new JButton();
+        try {
+            ImageIcon logoutIcon = new ImageIcon("file/logout.png");
+            Image img = logoutIcon.getImage().getScaledInstance(35, 35, Image.SCALE_SMOOTH);
+            logoutBtn.setIcon(new ImageIcon(img));
+        } catch (Exception e) {
+            logoutBtn.setText("🚪");
+        }
+        logoutBtn.setBorderPainted(false);
+        logoutBtn.setContentAreaFilled(false);
+        logoutBtn.setFocusPainted(false);
+        logoutBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        logoutBtn.setToolTipText("Logout");
+        logoutBtn.addActionListener(e -> {
+            int confirm = JOptionPane.showConfirmDialog(this, 
+                "Are you sure you want to logout?", 
+                "Confirm Logout", 
+                JOptionPane.YES_NO_OPTION);
+            if (confirm == JOptionPane.YES_OPTION) {
+                new Login();
+                dispose();
+            }
+        });
+        
+        rightPanel.add(bookingBtn);
+        rightPanel.add(logoutBtn);
+        
+        topBar.add(leftPanel, BorderLayout.WEST);
+        topBar.add(rightPanel, BorderLayout.EAST);
         
         return topBar;
     }
@@ -62,7 +130,7 @@ public class ConcertDetail extends JFrame {
     private JPanel createContentPanel() {
         JPanel contentPanel = new JPanel();
         contentPanel.setLayout(new BoxLayout(contentPanel, BoxLayout.Y_AXIS));
-        contentPanel.setBackground(new Color(80, 0, 0));
+        contentPanel.setBackground(new Color(100, 20, 20));
         contentPanel.setBorder(new EmptyBorder(30, 50, 30, 50));
         
         // Concert Image
@@ -120,9 +188,9 @@ public class ConcertDetail extends JFrame {
         }
         
         contentPanel.add(imagePanel);
-        contentPanel.add(Box.createVerticalStrut(30));
+        contentPanel.add(Box.createVerticalStrut(40));
         
-        // Concert Info
+        // Concert Info - Two Column Layout
         String name = concert.getString("name");
         String artist = concert.getString("artist");
         String date = concert.getString("date");
@@ -131,67 +199,69 @@ public class ConcertDetail extends JFrame {
         int seatsAvailable = concert.getInt("seats_available");
         String description = concert.optString("description", "No description available");
         
-        JLabel nameLabel = new JLabel(name);
-        nameLabel.setFont(new Font("SansSerif", Font.BOLD, 36));
+        // Title
+        JLabel nameLabel = new JLabel(name.toUpperCase());
+        nameLabel.setFont(new Font("SansSerif", Font.BOLD, 32));
         nameLabel.setForeground(Color.WHITE);
         nameLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
-        
-        JLabel artistLabel = new JLabel("Artist: " + artist);
-        artistLabel.setFont(new Font("SansSerif", Font.PLAIN, 20));
-        artistLabel.setForeground(new Color(200, 200, 200));
-        artistLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
-        
-        JLabel dateLabel = new JLabel("📅 Date: " + date);
-        dateLabel.setFont(new Font("SansSerif", Font.PLAIN, 18));
-        dateLabel.setForeground(new Color(200, 200, 200));
-        dateLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
-        
-        JLabel venueLabel = new JLabel("📍 Venue: " + venue);
-        venueLabel.setFont(new Font("SansSerif", Font.PLAIN, 18));
-        venueLabel.setForeground(new Color(200, 200, 200));
-        venueLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
-        
-        JLabel seatsLabel = new JLabel("🎫 Available Seats: " + seatsAvailable);
-        seatsLabel.setFont(new Font("SansSerif", Font.PLAIN, 18));
-        seatsLabel.setForeground(new Color(255, 200, 0));
-        seatsLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
-        
-        JLabel priceLabel = new JLabel(String.format("💰 Price: ฿%.2f per ticket", price));
-        priceLabel.setFont(new Font("SansSerif", Font.BOLD, 24));
-        priceLabel.setForeground(new Color(255, 200, 0));
-        priceLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
-        
         contentPanel.add(nameLabel);
-        contentPanel.add(Box.createVerticalStrut(10));
-        contentPanel.add(artistLabel);
         contentPanel.add(Box.createVerticalStrut(20));
-        contentPanel.add(dateLabel);
-        contentPanel.add(Box.createVerticalStrut(10));
-        contentPanel.add(venueLabel);
-        contentPanel.add(Box.createVerticalStrut(10));
-        contentPanel.add(seatsLabel);
-        contentPanel.add(Box.createVerticalStrut(20));
-        contentPanel.add(priceLabel);
-        contentPanel.add(Box.createVerticalStrut(30));
         
-        // Description
-        JLabel descLabel = new JLabel("Description:");
-        descLabel.setFont(new Font("SansSerif", Font.BOLD, 20));
-        descLabel.setForeground(Color.WHITE);
-        descLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        // Info Panel with two columns
+        JPanel infoPanel = new JPanel(new GridLayout(0, 2, 40, 15));
+        infoPanel.setOpaque(false);
+        infoPanel.setMaximumSize(new Dimension(800, 150));
+        infoPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
         
+        // Left column - Date, Time, Venue
+        JLabel dateLabel = new JLabel("📅 " + date);
+        dateLabel.setFont(new Font("SansSerif", Font.PLAIN, 16));
+        dateLabel.setForeground(new Color(100, 255, 100));
+        
+        JLabel timeLabel = new JLabel("🕐 08:00 PM - 01:00 AM");
+        timeLabel.setFont(new Font("SansSerif", Font.PLAIN, 16));
+        timeLabel.setForeground(new Color(100, 255, 100));
+        
+        JLabel venueLabel = new JLabel("📍 " + venue);
+        venueLabel.setFont(new Font("SansSerif", Font.PLAIN, 16));
+        venueLabel.setForeground(new Color(100, 255, 100));
+        
+        // Right column - Price (empty space for layout)
+        JLabel priceLabel = new JLabel(String.format("฿%.0f", price));
+        priceLabel.setFont(new Font("SansSerif", Font.BOLD, 36));
+        priceLabel.setForeground(Color.WHITE);
+        priceLabel.setHorizontalAlignment(SwingConstants.RIGHT);
+        
+        infoPanel.add(dateLabel);
+        infoPanel.add(new JLabel()); // spacer
+        infoPanel.add(timeLabel);
+        infoPanel.add(priceLabel);
+        infoPanel.add(venueLabel);
+        infoPanel.add(new JLabel()); // spacer
+        
+        contentPanel.add(infoPanel);
+        contentPanel.add(Box.createVerticalStrut(40));
+        
+        // Concert Details Section
+        JLabel detailsHeader = new JLabel("CONCERT DETAILS");
+        detailsHeader.setFont(new Font("SansSerif", Font.BOLD, 18));
+        detailsHeader.setForeground(Color.WHITE);
+        detailsHeader.setAlignmentX(Component.LEFT_ALIGNMENT);
+        contentPanel.add(detailsHeader);
+        contentPanel.add(Box.createVerticalStrut(15));
+        
+        // Description with better formatting
         JTextArea descArea = new JTextArea(description);
-        descArea.setFont(new Font("SansSerif", Font.PLAIN, 16));
-        descArea.setForeground(new Color(200, 200, 200));
-        descArea.setBackground(new Color(60, 0, 0));
+        descArea.setFont(new Font("SansSerif", Font.PLAIN, 15));
+        descArea.setForeground(new Color(220, 220, 220));
+        descArea.setBackground(new Color(100, 20, 20));
         descArea.setLineWrap(true);
         descArea.setWrapStyleWord(true);
         descArea.setEditable(false);
-        descArea.setBorder(new EmptyBorder(15, 15, 15, 15));
+        descArea.setBorder(new EmptyBorder(0, 0, 0, 0));
         descArea.setAlignmentX(Component.LEFT_ALIGNMENT);
+        descArea.setMaximumSize(new Dimension(800, 200));
         
-        contentPanel.add(descLabel);
-        contentPanel.add(Box.createVerticalStrut(10));
         contentPanel.add(descArea);
         contentPanel.add(Box.createVerticalStrut(30));
         
@@ -204,103 +274,27 @@ public class ConcertDetail extends JFrame {
     private JPanel createBookingPanel(double price, int maxSeats) {
         JPanel bookingPanel = new JPanel();
         bookingPanel.setLayout(new BoxLayout(bookingPanel, BoxLayout.Y_AXIS));
-        bookingPanel.setBackground(new Color(60, 0, 0));
-        bookingPanel.setBorder(new EmptyBorder(20, 20, 20, 20));
+        bookingPanel.setBackground(new Color(100, 20, 20));
+        bookingPanel.setBorder(new EmptyBorder(20, 0, 20, 0));
         bookingPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        bookingPanel.setMaximumSize(new Dimension(800, 150));
         
-        JLabel bookingTitle = new JLabel("Book Tickets");
-        bookingTitle.setFont(new Font("SansSerif", Font.BOLD, 24));
-        bookingTitle.setForeground(Color.WHITE);
-        bookingTitle.setAlignmentX(Component.LEFT_ALIGNMENT);
-        
-        JPanel quantityPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        quantityPanel.setOpaque(false);
-        
-        JLabel qtyLabel = new JLabel("Quantity: ");
-        qtyLabel.setFont(new Font("SansSerif", Font.PLAIN, 18));
-        qtyLabel.setForeground(Color.WHITE);
-        
-        SpinnerNumberModel spinnerModel = new SpinnerNumberModel(1, 1, Math.min(maxSeats, 10), 1);
-        quantitySpinner = new JSpinner(spinnerModel);
-        quantitySpinner.setFont(new Font("SansSerif", Font.PLAIN, 18));
-        quantitySpinner.setPreferredSize(new Dimension(80, 35));
-        
-        JLabel totalLabel = new JLabel(String.format("Total: ฿%.2f", price));
-        totalLabel.setFont(new Font("SansSerif", Font.BOLD, 20));
-        totalLabel.setForeground(new Color(255, 200, 0));
-        
-        quantitySpinner.addChangeListener(e -> {
-            int qty = (Integer) quantitySpinner.getValue();
-            totalLabel.setText(String.format("Total: ฿%.2f", price * qty));
-        });
-        
-        quantityPanel.add(qtyLabel);
-        quantityPanel.add(quantitySpinner);
-        quantityPanel.add(Box.createHorizontalStrut(20));
-        quantityPanel.add(totalLabel);
-        
-        JButton bookButton = new JButton("Book Now");
+        JButton bookButton = new JButton("Select Seats");
         bookButton.setFont(new Font("SansSerif", Font.BOLD, 20));
-        bookButton.setForeground(new Color(80, 0, 0));
-        bookButton.setBackground(Color.WHITE);
+        bookButton.setForeground(Color.WHITE);
+        bookButton.setBackground(new Color(200, 50, 50));
         bookButton.setFocusPainted(false);
-        bookButton.setPreferredSize(new Dimension(200, 50));
+        bookButton.setPreferredSize(new Dimension(250, 60));
+        bookButton.setMaximumSize(new Dimension(250, 60));
         bookButton.setAlignmentX(Component.LEFT_ALIGNMENT);
         bookButton.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        bookButton.addActionListener(e -> processBooking(price));
+        bookButton.addActionListener(e -> {
+            new SeatSelection(userId, username, concert);
+            dispose();
+        });
         
-        bookingPanel.add(bookingTitle);
-        bookingPanel.add(Box.createVerticalStrut(15));
-        bookingPanel.add(quantityPanel);
-        bookingPanel.add(Box.createVerticalStrut(20));
         bookingPanel.add(bookButton);
         
         return bookingPanel;
-    }
-    
-    private void processBooking(double pricePerTicket) {
-        int quantity = (Integer) quantitySpinner.getValue();
-        double totalPrice = pricePerTicket * quantity;
-        int concertId = concert.getInt("id");
-        
-        int confirm = JOptionPane.showConfirmDialog(this,
-            String.format("Confirm booking:\n%d ticket(s) for ฿%.2f?", quantity, totalPrice),
-            "Confirm Booking",
-            JOptionPane.YES_NO_OPTION);
-            
-        if (confirm == JOptionPane.YES_OPTION) {
-            String seatNumbers = generateSeatNumbers(quantity);
-            
-            JSONObject result = SupabaseConfig.createBooking(userId, concertId, seatNumbers, quantity, totalPrice);
-            
-            if (result.has("error") && result.getBoolean("error")) {
-                JOptionPane.showMessageDialog(this,
-                    "Booking failed: " + result.getString("message"),
-                    "Error",
-                    JOptionPane.ERROR_MESSAGE);
-            } else {
-                // Update available seats
-                int currentSeats = concert.getInt("seats_available");
-                SupabaseConfig.updateConcertSeats(concertId, currentSeats - quantity);
-                
-                JOptionPane.showMessageDialog(this,
-                    "Booking successful!\nSeats: " + seatNumbers,
-                    "Success",
-                    JOptionPane.INFORMATION_MESSAGE);
-                    
-                new ConcertList(userId, username);
-                dispose();
-            }
-        }
-    }
-    
-    private String generateSeatNumbers(int quantity) {
-        StringBuilder seats = new StringBuilder();
-        int startSeat = (int)(Math.random() * 100) + 1;
-        for (int i = 0; i < quantity; i++) {
-            if (i > 0) seats.append(", ");
-            seats.append("A").append(startSeat + i);
-        }
-        return seats.toString();
     }
 }

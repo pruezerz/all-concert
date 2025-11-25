@@ -142,25 +142,36 @@ public class Login extends JFrame {
                 return;
             }
             
-            // Call Supabase login
-            JSONObject result = SupabaseConfig.loginUser(username, password);
+            // Disable button and show loading
+            loginButton.setEnabled(false);
+            loginButton.setText("Logging in...");
             
-            if (result.has("error") && result.getBoolean("error")) {
-                JOptionPane.showMessageDialog(this, result.getString("message"), "Login Failed", JOptionPane.ERROR_MESSAGE);
-            } else {
-                String role = result.optString("role", "user");
-                int userId = result.getInt("id");
-                String userName = result.getString("username");
+            // Perform login in background thread
+            new Thread(() -> {
+                JSONObject result = SupabaseConfig.loginUser(username, password);
                 
-                // Navigate based on role
-                if (role.equals("admin")) {
-                    new AdminDashboard(userId, userName);
-                    this.dispose();
-                } else {
-                    new ConcertList(userId, userName);
-                    this.dispose();
-                }
-            }
+                SwingUtilities.invokeLater(() -> {
+                    loginButton.setEnabled(true);
+                    loginButton.setText("Login");
+                    
+                    if (result.has("error") && result.getBoolean("error")) {
+                        JOptionPane.showMessageDialog(this, result.getString("message"), "Login Failed", JOptionPane.ERROR_MESSAGE);
+                    } else {
+                        String role = result.optString("role", "user");
+                        int userId = result.getInt("id");
+                        String userName = result.getString("username");
+                        
+                        // Navigate based on role
+                        if (role.equals("admin")) {
+                            new AdminDashboard(userId, userName);
+                            this.dispose();
+                        } else {
+                            new ConcertList(userId, userName);
+                            this.dispose();
+                        }
+                    }
+                });
+            }).start();
         };
         
         loginButton.addActionListener(loginAction);

@@ -92,21 +92,56 @@ public class ConcertList extends JFrame {
         
         centerPanel.add(searchField);
         
-        // Right: User Menu
-        JPanel rightPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        // Right: User Menu with icons
+        JPanel rightPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 15, 0));
         rightPanel.setOpaque(false);
         
-        JLabel userIcon = new JLabel("👤 " + username);
-        userIcon.setFont(new Font("SansSerif", Font.PLAIN, 16));
-        userIcon.setForeground(Color.WHITE);
-        userIcon.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        userIcon.addMouseListener(new MouseAdapter() {
-            public void mouseClicked(MouseEvent e) {
-                showUserMenu();
+        // Booking History Button
+        JButton bookingBtn = new JButton();
+        try {
+            ImageIcon bookingIcon = new ImageIcon("file/history booking.png");
+            Image img = bookingIcon.getImage().getScaledInstance(35, 35, Image.SCALE_SMOOTH);
+            bookingBtn.setIcon(new ImageIcon(img));
+        } catch (Exception e) {
+            bookingBtn.setText("📋");
+        }
+        bookingBtn.setBorderPainted(false);
+        bookingBtn.setContentAreaFilled(false);
+        bookingBtn.setFocusPainted(false);
+        bookingBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        bookingBtn.setToolTipText("My Bookings");
+        bookingBtn.addActionListener(e -> {
+            new MyBookings(userId, username);
+            dispose();
+        });
+        
+        // Logout Button
+        JButton logoutBtn = new JButton();
+        try {
+            ImageIcon logoutIcon = new ImageIcon("file/logout.png");
+            Image img = logoutIcon.getImage().getScaledInstance(35, 35, Image.SCALE_SMOOTH);
+            logoutBtn.setIcon(new ImageIcon(img));
+        } catch (Exception e) {
+            logoutBtn.setText("🚪");
+        }
+        logoutBtn.setBorderPainted(false);
+        logoutBtn.setContentAreaFilled(false);
+        logoutBtn.setFocusPainted(false);
+        logoutBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        logoutBtn.setToolTipText("Logout");
+        logoutBtn.addActionListener(e -> {
+            int confirm = JOptionPane.showConfirmDialog(this, 
+                "Are you sure you want to logout?", 
+                "Confirm Logout", 
+                JOptionPane.YES_NO_OPTION);
+            if (confirm == JOptionPane.YES_OPTION) {
+                new Login();
+                dispose();
             }
         });
         
-        rightPanel.add(userIcon);
+        rightPanel.add(bookingBtn);
+        rightPanel.add(logoutBtn);
         
         topBar.add(leftPanel, BorderLayout.WEST);
         topBar.add(centerPanel, BorderLayout.CENTER);
@@ -120,13 +155,16 @@ public class ConcertList extends JFrame {
         contentPanel.setLayout(new BoxLayout(contentPanel, BoxLayout.Y_AXIS));
         contentPanel.setBackground(new Color(100, 20, 20));
         
-        // Recommended Section
+        // Recommended Section - Centered
+        JPanel titlePanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
+        titlePanel.setOpaque(false);
+        titlePanel.setBorder(new EmptyBorder(30, 0, 20, 0));
+        
         JLabel recommendedTitle = new JLabel("Recommended for You");
         recommendedTitle.setFont(new Font("SansSerif", Font.BOLD, 28));
         recommendedTitle.setForeground(Color.WHITE);
-        recommendedTitle.setBorder(new EmptyBorder(30, 50, 20, 0));
-        recommendedTitle.setAlignmentX(Component.LEFT_ALIGNMENT);
-        contentPanel.add(recommendedTitle);
+        titlePanel.add(recommendedTitle);
+        contentPanel.add(titlePanel);
         
         // Concert Grid (3 columns)
         concertGridPanel = new JPanel(new GridLayout(0, 3, 20, 20));
