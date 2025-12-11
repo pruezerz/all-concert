@@ -128,17 +128,22 @@ public class ConcertDetail extends JFrame {
     }
     
     private JPanel createContentPanel() {
-        JPanel contentPanel = new JPanel();
-        contentPanel.setLayout(new BoxLayout(contentPanel, BoxLayout.Y_AXIS));
+        JPanel contentPanel = new JPanel(new BorderLayout(40, 40));
         contentPanel.setBackground(new Color(100, 20, 20));
-        contentPanel.setBorder(new EmptyBorder(30, 50, 30, 50));
+        contentPanel.setBorder(new EmptyBorder(40, 60, 40, 60));
         
-        // Concert Image
+        // Left Side: Concert Image
+        JPanel leftPanel = new JPanel(new BorderLayout());
+        leftPanel.setBackground(new Color(100, 20, 20));
+        leftPanel.setPreferredSize(new Dimension(500, 700));
+        
         JPanel imagePanel = new JPanel(new BorderLayout());
-        imagePanel.setPreferredSize(new Dimension(800, 300));
-        imagePanel.setMaximumSize(new Dimension(800, 300));
-        imagePanel.setBackground(new Color(40, 0, 0));
-        imagePanel.setBorder(BorderFactory.createLineBorder(new Color(100, 0, 0), 2));
+        imagePanel.setPreferredSize(new Dimension(500, 650));
+        imagePanel.setBackground(new Color(60, 10, 10));
+        imagePanel.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(new Color(150, 50, 50), 3),
+            BorderFactory.createEmptyBorder(10, 10, 10, 10)
+        ));
         
         // Try to load image from URL or file path
         String imageUrl = concert.optString("image_url", "");
@@ -147,22 +152,19 @@ public class ConcertDetail extends JFrame {
             try {
                 ImageIcon icon;
                 if (imageUrl.startsWith("http://") || imageUrl.startsWith("https://")) {
-                    // Load from URL
-                    URL url = new URL(imageUrl);
+                    URL url = new java.net.URI(imageUrl).toURL();
                     Image img = ImageIO.read(url);
                     icon = new ImageIcon(img);
                 } else {
-                    // Load from file path
                     icon = new ImageIcon(imageUrl);
                 }
                 
-                // Scale image to fit while maintaining aspect ratio
                 Image img = icon.getImage();
                 int originalWidth = img.getWidth(null);
                 int originalHeight = img.getHeight(null);
                 
-                int targetWidth = 800;
-                int targetHeight = 300;
+                int targetWidth = 480;
+                int targetHeight = 630;
                 
                 double scale = Math.min((double)targetWidth/originalWidth, (double)targetHeight/originalHeight);
                 int scaledWidth = (int)(originalWidth * scale);
@@ -173,24 +175,21 @@ public class ConcertDetail extends JFrame {
                 imageLabel.setHorizontalAlignment(SwingConstants.CENTER);
                 imagePanel.add(imageLabel);
             } catch (Exception e) {
-                // If image fails to load, show default placeholder
-                JLabel imagePlaceholder = new JLabel("🎸 Concert Poster", SwingConstants.CENTER);
-                imagePlaceholder.setFont(new Font("SansSerif", Font.BOLD, 48));
-                imagePlaceholder.setForeground(Color.WHITE);
+                JLabel imagePlaceholder = new JLabel("🎸", SwingConstants.CENTER);
+                imagePlaceholder.setFont(new Font("SansSerif", Font.BOLD, 120));
+                imagePlaceholder.setForeground(new Color(150, 150, 150));
                 imagePanel.add(imagePlaceholder);
             }
         } else {
-            // No image URL provided, show default placeholder
-            JLabel imagePlaceholder = new JLabel("🎸 Concert Poster", SwingConstants.CENTER);
-            imagePlaceholder.setFont(new Font("SansSerif", Font.BOLD, 48));
-            imagePlaceholder.setForeground(Color.WHITE);
+            JLabel imagePlaceholder = new JLabel("🎸", SwingConstants.CENTER);
+            imagePlaceholder.setFont(new Font("SansSerif", Font.BOLD, 120));
+            imagePlaceholder.setForeground(new Color(150, 150, 150));
             imagePanel.add(imagePlaceholder);
         }
         
-        contentPanel.add(imagePanel);
-        contentPanel.add(Box.createVerticalStrut(40));
+        leftPanel.add(imagePanel, BorderLayout.CENTER);
         
-        // Concert Info - Two Column Layout
+        // Right Side: Concert Info
         String name = concert.getString("name");
         String artist = concert.getString("artist");
         String date = concert.getString("date");
@@ -199,58 +198,93 @@ public class ConcertDetail extends JFrame {
         int seatsAvailable = concert.getInt("seats_available");
         String description = concert.optString("description", "No description available");
         
-        // Title
-        JLabel nameLabel = new JLabel(name.toUpperCase());
+        JScrollPane rightScrollPane = new JScrollPane();
+        rightScrollPane.setBorder(null);
+        rightScrollPane.setBackground(new Color(100, 20, 20));
+        rightScrollPane.getViewport().setBackground(new Color(100, 20, 20));
+        
+        JPanel rightPanel = new JPanel();
+        rightPanel.setLayout(new BoxLayout(rightPanel, BoxLayout.Y_AXIS));
+        rightPanel.setBackground(new Color(100, 20, 20));
+        rightPanel.setBorder(new EmptyBorder(0, 0, 20, 0));
+        
+        // Concert Name
+        JLabel nameLabel = new JLabel("<html>" + name.toUpperCase() + "</html>");
         nameLabel.setFont(new Font("SansSerif", Font.BOLD, 32));
-        nameLabel.setForeground(Color.WHITE);
+        nameLabel.setForeground(new Color(255, 220, 100));
         nameLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
-        contentPanel.add(nameLabel);
-        contentPanel.add(Box.createVerticalStrut(20));
         
-        // Info Panel with two columns
-        JPanel infoPanel = new JPanel(new GridLayout(0, 2, 40, 15));
-        infoPanel.setOpaque(false);
-        infoPanel.setMaximumSize(new Dimension(800, 150));
-        infoPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        // Artist
+        JLabel artistLabel = new JLabel("🎤 " + artist);
+        artistLabel.setFont(new Font("SansSerif", Font.BOLD, 20));
+        artistLabel.setForeground(new Color(200, 200, 200));
+        artistLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        artistLabel.setBorder(new EmptyBorder(10, 0, 30, 0));
         
-        // Left column - Date, Time, Venue
-        JLabel dateLabel = new JLabel("📅 " + date);
-        dateLabel.setFont(new Font("SansSerif", Font.PLAIN, 16));
-        dateLabel.setForeground(new Color(100, 255, 100));
+        rightPanel.add(nameLabel);
+        rightPanel.add(artistLabel);
         
-        JLabel timeLabel = new JLabel("🕐 08:00 PM - 01:00 AM");
-        timeLabel.setFont(new Font("SansSerif", Font.PLAIN, 16));
-        timeLabel.setForeground(new Color(100, 255, 100));
+        // Info Cards - 2 columns
+        JPanel infoGrid = new JPanel(new GridLayout(3, 2, 20, 15));
+        infoGrid.setOpaque(false);
+        infoGrid.setAlignmentX(Component.LEFT_ALIGNMENT);
+        infoGrid.setMaximumSize(new Dimension(600, 180));
         
-        JLabel venueLabel = new JLabel("📍 " + venue);
-        venueLabel.setFont(new Font("SansSerif", Font.PLAIN, 16));
-        venueLabel.setForeground(new Color(100, 255, 100));
+        infoGrid.add(createInfoCard("📅 DATE", date));
+        infoGrid.add(createInfoCard("📍 VENUE", venue));
+        infoGrid.add(createInfoCard("🕐 TIME", "20:00 - 01:00"));
+        infoGrid.add(createInfoCard("💰 PRICE", String.format("฿%.0f", price)));
+        infoGrid.add(createInfoCard("💺 AVAILABLE", seatsAvailable + " seats"));
+        infoGrid.add(createInfoCard("🎫 ZONES", "8 zones"));
         
-        // Right column - Price (empty space for layout)
-        JLabel priceLabel = new JLabel(String.format("฿%.0f", price));
-        priceLabel.setFont(new Font("SansSerif", Font.BOLD, 36));
-        priceLabel.setForeground(Color.WHITE);
-        priceLabel.setHorizontalAlignment(SwingConstants.RIGHT);
+        rightPanel.add(infoGrid);
+        rightPanel.add(Box.createVerticalStrut(30));
         
-        infoPanel.add(dateLabel);
-        infoPanel.add(new JLabel()); // spacer
-        infoPanel.add(timeLabel);
-        infoPanel.add(priceLabel);
-        infoPanel.add(venueLabel);
-        infoPanel.add(new JLabel()); // spacer
+        // Divider
+        JSeparator separator = new JSeparator();
+        separator.setForeground(new Color(120, 25, 25));
+        separator.setMaximumSize(new Dimension(600, 2));
+        separator.setAlignmentX(Component.LEFT_ALIGNMENT);
+        rightPanel.add(separator);
+        rightPanel.add(Box.createVerticalStrut(25));
         
-        contentPanel.add(infoPanel);
-        contentPanel.add(Box.createVerticalStrut(40));
+        // Book Button
+        JButton bookButton = new JButton("🎫 SELECT SEATS & BOOK NOW");
+        bookButton.setFont(new Font("SansSerif", Font.BOLD, 20));
+        bookButton.setForeground(new Color(60, 10, 10));
+        bookButton.setBackground(new Color(255, 200, 50));
+        bookButton.setFocusPainted(false);
+        bookButton.setPreferredSize(new Dimension(400, 65));
+        bookButton.setMaximumSize(new Dimension(400, 65));
+        bookButton.setAlignmentX(Component.LEFT_ALIGNMENT);
+        bookButton.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        bookButton.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(new Color(200, 150, 0), 2),
+            new EmptyBorder(5, 20, 5, 20)
+        ));
+        bookButton.addActionListener(e -> {
+            new SeatSelection(userId, username, concert);
+            dispose();
+        });
         
-        // Concert Details Section
-        JLabel detailsHeader = new JLabel("CONCERT DETAILS");
-        detailsHeader.setFont(new Font("SansSerif", Font.BOLD, 18));
-        detailsHeader.setForeground(Color.WHITE);
-        detailsHeader.setAlignmentX(Component.LEFT_ALIGNMENT);
-        contentPanel.add(detailsHeader);
-        contentPanel.add(Box.createVerticalStrut(15));
+        bookButton.addMouseListener(new MouseAdapter() {
+            public void mouseEntered(MouseEvent e) {
+                bookButton.setBackground(new Color(255, 220, 100));
+            }
+            public void mouseExited(MouseEvent e) {
+                bookButton.setBackground(new Color(255, 200, 50));
+            }
+        });
         
-        // Description with better formatting
+        rightPanel.add(bookButton);
+        
+        // Description Section
+        JLabel descriptionHeader = new JLabel("DESCRIPTION");
+        descriptionHeader.setFont(new Font("SansSerif", Font.BOLD, 16));
+        descriptionHeader.setForeground(new Color(255, 220, 100));
+        descriptionHeader.setAlignmentX(Component.LEFT_ALIGNMENT);
+        descriptionHeader.setBorder(new EmptyBorder(30, 0, 10, 0));
+        
         JTextArea descArea = new JTextArea(description);
         descArea.setFont(new Font("SansSerif", Font.PLAIN, 15));
         descArea.setForeground(new Color(220, 220, 220));
@@ -258,43 +292,44 @@ public class ConcertDetail extends JFrame {
         descArea.setLineWrap(true);
         descArea.setWrapStyleWord(true);
         descArea.setEditable(false);
-        descArea.setBorder(new EmptyBorder(0, 0, 0, 0));
+        descArea.setBorder(new EmptyBorder(0, 0, 30, 0));
         descArea.setAlignmentX(Component.LEFT_ALIGNMENT);
-        descArea.setMaximumSize(new Dimension(800, 200));
         
-        contentPanel.add(descArea);
-        contentPanel.add(Box.createVerticalStrut(30));
+        rightPanel.add(descriptionHeader);
+        rightPanel.add(descArea);
         
-        // Booking Panel
-        contentPanel.add(createBookingPanel(price, seatsAvailable));
+        rightScrollPane.setViewportView(rightPanel);
+        
+        // Add to main content panel
+        contentPanel.add(leftPanel, BorderLayout.WEST);
+        contentPanel.add(rightScrollPane, BorderLayout.CENTER);
         
         return contentPanel;
     }
     
-    private JPanel createBookingPanel(double price, int maxSeats) {
-        JPanel bookingPanel = new JPanel();
-        bookingPanel.setLayout(new BoxLayout(bookingPanel, BoxLayout.Y_AXIS));
-        bookingPanel.setBackground(new Color(100, 20, 20));
-        bookingPanel.setBorder(new EmptyBorder(20, 0, 20, 0));
-        bookingPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
-        bookingPanel.setMaximumSize(new Dimension(800, 150));
+    private JPanel createInfoCard(String label, String value) {
+        JPanel card = new JPanel();
+        card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
+        card.setBackground(new Color(80, 15, 15));
+        card.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(new Color(120, 25, 25), 1),
+            new EmptyBorder(12, 15, 12, 15)
+        ));
         
-        JButton bookButton = new JButton("Select Seats");
-        bookButton.setFont(new Font("SansSerif", Font.BOLD, 20));
-        bookButton.setForeground(Color.WHITE);
-        bookButton.setBackground(new Color(200, 50, 50));
-        bookButton.setFocusPainted(false);
-        bookButton.setPreferredSize(new Dimension(250, 60));
-        bookButton.setMaximumSize(new Dimension(250, 60));
-        bookButton.setAlignmentX(Component.LEFT_ALIGNMENT);
-        bookButton.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        bookButton.addActionListener(e -> {
-            new SeatSelection(userId, username, concert);
-            dispose();
-        });
+        JLabel labelText = new JLabel(label);
+        labelText.setFont(new Font("SansSerif", Font.BOLD, 11));
+        labelText.setForeground(new Color(150, 150, 150));
+        labelText.setAlignmentX(Component.LEFT_ALIGNMENT);
         
-        bookingPanel.add(bookButton);
+        JLabel valueText = new JLabel("<html>" + value + "</html>");
+        valueText.setFont(new Font("SansSerif", Font.BOLD, 16));
+        valueText.setForeground(Color.WHITE);
+        valueText.setAlignmentX(Component.LEFT_ALIGNMENT);
+        valueText.setBorder(new EmptyBorder(5, 0, 0, 0));
         
-        return bookingPanel;
+        card.add(labelText);
+        card.add(valueText);
+        
+        return card;
     }
 }

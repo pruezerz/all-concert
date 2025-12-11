@@ -9,8 +9,9 @@ public class SeatSelection extends JFrame {
     private String username;
     private JSONObject concert;
     private int concertId;
-    private String selectedZone = "BLUE B";
-    private Set<String> selectedSeats = new HashSet<>();
+    private Zone currentZone;
+    private SeatManager seatManager;
+    private Set<String> bookedSeats = new HashSet<>();
     private JPanel seatsPanel;
     private JLabel zoneLabel;
     private JLabel qtyLabel;
@@ -21,6 +22,13 @@ public class SeatSelection extends JFrame {
         this.username = username;
         this.concert = concert;
         this.concertId = concert.getInt("id");
+        
+        // Initialize with default zone
+        this.currentZone = Zone.getZoneByName("BLUE B");
+        this.seatManager = new SeatManager(currentZone);
+        
+        // Load booked seats from database
+        loadBookedSeats();
         
         setTitle("Select Seat");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -117,9 +125,9 @@ public class SeatSelection extends JFrame {
         JPanel topRow = new JPanel(new FlowLayout(FlowLayout.CENTER, 8, 0));
         topRow.setOpaque(false);
         topRow.setMaximumSize(new Dimension(400, 80));
-        topRow.add(createZoneButton("PURPLE A", new Color(150, 100, 200)));
-        topRow.add(createZoneButton("GREEN A", new Color(100, 200, 100)));
-        topRow.add(createZoneButton("BLUE A", new Color(100, 150, 220)));
+        topRow.add(createZoneButton(new Zone("PURPLE A", new Color(150, 100, 200), 6000.0, Zone.ZoneType.SEATING)));
+        topRow.add(createZoneButton(new Zone("GREEN A", new Color(100, 200, 100), 4000.0, Zone.ZoneType.SEATING)));
+        topRow.add(createZoneButton(new Zone("BLUE A", new Color(100, 150, 220), 3000.0, Zone.ZoneType.SEATING)));
         topRow.setAlignmentX(Component.CENTER_ALIGNMENT);
         mainZonePanel.add(topRow);
         mainZonePanel.add(Box.createVerticalStrut(10));
@@ -165,9 +173,9 @@ public class SeatSelection extends JFrame {
         JPanel bottomRow = new JPanel(new FlowLayout(FlowLayout.CENTER, 8, 0));
         bottomRow.setOpaque(false);
         bottomRow.setMaximumSize(new Dimension(400, 80));
-        bottomRow.add(createZoneButton("BLUE B", new Color(100, 150, 220)));
-        bottomRow.add(createZoneButton("GREEN B", new Color(100, 200, 100)));
-        bottomRow.add(createZoneButton("PURPLE B", new Color(150, 100, 200)));
+        bottomRow.add(createZoneButton(new Zone("BLUE B", new Color(100, 150, 220), 3000.0, Zone.ZoneType.SEATING)));
+        bottomRow.add(createZoneButton(new Zone("GREEN B", new Color(100, 200, 100), 4000.0, Zone.ZoneType.SEATING)));
+        bottomRow.add(createZoneButton(new Zone("PURPLE B", new Color(150, 100, 200), 6000.0, Zone.ZoneType.SEATING)));
         bottomRow.setAlignmentX(Component.CENTER_ALIGNMENT);
         mainZonePanel.add(bottomRow);
         
@@ -176,16 +184,17 @@ public class SeatSelection extends JFrame {
         return mapPanel;
     }
     
-    private JButton createZoneButton(String zoneName, Color color) {
-        JButton btn = new JButton(zoneName);
-        btn.setBackground(color);
+    private JButton createZoneButton(Zone zone) {
+        JButton btn = new JButton(zone.getName());
+        btn.setBackground(zone.getColor());
         btn.setPreferredSize(new Dimension(90, 70));
         btn.setFont(new Font("SansSerif", Font.BOLD, 11));
         btn.setFocusPainted(false);
         btn.setBorder(BorderFactory.createLineBorder(Color.DARK_GRAY, 2));
         btn.addActionListener(e -> {
-            selectedZone = zoneName;
-            selectedSeats.clear();
+            currentZone = zone;
+            seatManager = new SeatManager(zone);
+            seatManager.markAsBooked(bookedSeats);
             updateSeatGrid();
         });
         return btn;
@@ -199,21 +208,18 @@ public class SeatSelection extends JFrame {
         JPanel headerPanel = new JPanel(new BorderLayout());
         headerPanel.setOpaque(false);
         
-        zoneLabel = new JLabel("ZONE: " + selectedZone);
+        zoneLabel = new JLabel("ZONE: " + currentZone.getName());
         zoneLabel.setFont(new Font("SansSerif", Font.BOLD, 20));
         zoneLabel.setForeground(Color.WHITE);
         
         JPanel rightPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 20, 0));
         rightPanel.setOpaque(false);
         
-        double price = concert.getDouble("price");
-        double totalPrice = price * selectedSeats.size();
-        
-        priceLabel = new JLabel(String.format("฿%.2f", totalPrice));
+        priceLabel = new JLabel(String.format("฿%.2f", seatManager.getTotalPrice()));
         priceLabel.setFont(new Font("SansSerif", Font.BOLD, 20));
         priceLabel.setForeground(new Color(100, 255, 100));
         
-        qtyLabel = new JLabel("QTY: " + selectedSeats.size());
+        qtyLabel = new JLabel("QTY: " + seatManager.getSelectedCount());
         qtyLabel.setFont(new Font("SansSerif", Font.BOLD, 18));
         qtyLabel.setForeground(Color.WHITE);
         
@@ -252,30 +258,21 @@ public class SeatSelection extends JFrame {
     private void updateSeatGrid() {
         seatsPanel.removeAll();
         
-        char[] rows = {'A', 'B', 'C', 'D'};
-        
-        for (char row : rows) {
-            for (int num = 1; num <= 7; num++) {
-                // Add zone prefix to seat ID
-                String seatId = selectedZone.replace(" ", "") + "-" + row + num;
-                JButton seatBtn = createSeatButton(seatId);
-                seatsPanel.add(seatBtn);
-            }
+        for (Seat seat : seatManager.getAllSeats()) {
+            JButton seatBtn = createSeatButton(seat);
+            seatsPanel.add(seatBtn);
         }
         
         // Update header labels
-        zoneLabel.setText("ZONE: " + selectedZone);
-        qtyLabel.setText("QTY: " + selectedSeats.size());
-        
-        double price = concert.getDouble("price");
-        double totalPrice = price * selectedSeats.size();
-        priceLabel.setText(String.format("฿%.2f", totalPrice));
+        zoneLabel.setText("ZONE: " + currentZone.getName());
+        qtyLabel.setText("QTY: " + seatManager.getSelectedCount());
+        priceLabel.setText(String.format("฿%.2f", seatManager.getTotalPrice()));
         
         seatsPanel.revalidate();
         seatsPanel.repaint();
     }
     
-    private JButton createSeatButton(String seatId) {
+    private JButton createSeatButton(Seat seat) {
         JButton btn = new JButton();
         btn.setPreferredSize(new Dimension(70, 60));
         btn.setFocusPainted(false);
@@ -285,61 +282,39 @@ public class SeatSelection extends JFrame {
         seatPanel.setLayout(new BoxLayout(seatPanel, BoxLayout.Y_AXIS));
         seatPanel.setOpaque(false);
         
-        JLabel iconLabel = new JLabel("💺");
+        String icon = seat.isBooked() ? "🔒" : "💺";
+        JLabel iconLabel = new JLabel(icon);
         iconLabel.setFont(new Font("SansSerif", Font.PLAIN, 24));
         iconLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
         
-        // Extract just the seat position (e.g., "A1" from "BLUEB-A1")
-        String displayId = seatId.substring(seatId.lastIndexOf("-") + 1);
-        JLabel idLabel = new JLabel(displayId);
+        JLabel idLabel = new JLabel(seat.getDisplayId());
         idLabel.setFont(new Font("SansSerif", Font.BOLD, 12));
         idLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
         
         seatPanel.add(iconLabel);
         seatPanel.add(idLabel);
-        
         btn.add(seatPanel);
         
-        if (selectedSeats.contains(seatId)) {
+        // Set colors based on state
+        if (seat.isBooked()) {
+            btn.setBackground(new Color(80, 80, 80));
+            idLabel.setForeground(Color.GRAY);
+            btn.setEnabled(false);
+        } else if (seat.isSelected()) {
             btn.setBackground(new Color(255, 100, 150));
             idLabel.setForeground(Color.WHITE);
         } else {
-            // Use zone color for available seats
-            Color zoneColor = getZoneColor(selectedZone);
-            btn.setBackground(zoneColor);
+            btn.setBackground(currentZone.getColor());
             idLabel.setForeground(Color.BLACK);
         }
         
         btn.addActionListener(e -> {
-            if (selectedSeats.contains(seatId)) {
-                selectedSeats.remove(seatId);
-            } else {
-                selectedSeats.add(seatId);
+            if (seatManager.toggleSeat(seat.getId())) {
+                updateSeatGrid();
             }
-            updateSeatGrid();
         });
         
         return btn;
-    }
-    
-    private Color getZoneColor(String zone) {
-        switch(zone) {
-            case "PURPLE A":
-            case "PURPLE B":
-                return new Color(150, 100, 200);
-            case "GREEN A":
-            case "GREEN B":
-                return new Color(100, 200, 100);
-            case "BLUE A":
-            case "BLUE B":
-                return new Color(100, 150, 220);
-            case "YELLOW":
-                return new Color(230, 230, 100);
-            case "PINK":
-                return new Color(230, 150, 180);
-            default:
-                return new Color(180, 160, 200);
-        }
     }
     
     private JPanel createLegendItem(String label, Color color) {
@@ -373,28 +348,67 @@ public class SeatSelection extends JFrame {
         confirmBtn.setFocusPainted(false);
         
         confirmBtn.addActionListener(e -> {
-            if (selectedSeats.isEmpty()) {
+            if (seatManager.getSelectedCount() == 0) {
                 JOptionPane.showMessageDialog(this, "Please select at least one seat!", "Error", JOptionPane.ERROR_MESSAGE);
                 return;
             }
             
+            java.util.List<String> selectedSeats = seatManager.getSelectedSeatIds();
             int confirm = JOptionPane.showConfirmDialog(this,
-                "Confirm booking " + selectedSeats.size() + " seat(s) in " + selectedZone + "?\nSeats: " + selectedSeats,
+                "Confirm booking " + seatManager.getSelectedCount() + " seat(s) in " + currentZone.getName() + "?\nSeats: " + selectedSeats,
                 "Confirm Booking",
                 JOptionPane.YES_NO_OPTION);
                 
             if (confirm == JOptionPane.YES_OPTION) {
-                double price = concert.getDouble("price");
-                double totalPrice = price * selectedSeats.size();
+                // Create booking directly
+                int concertId = concert.getInt("id");
+                String seatNumbers = String.join(", ", selectedSeats);
+                double totalPrice = seatManager.getTotalPrice();
                 
-                // Open payment page instead of direct booking
-                new PaymentPage(userId, username, concert, selectedZone, selectedSeats, totalPrice);
-                dispose();
+                JSONObject result = SupabaseConfig.createBooking(userId, concertId, seatNumbers, seatManager.getSelectedCount(), totalPrice);
+                
+                if (result.has("error") && result.getBoolean("error")) {
+                    JOptionPane.showMessageDialog(this, "Booking failed: " + result.getString("message"), "Error", JOptionPane.ERROR_MESSAGE);
+                } else {
+                    JOptionPane.showMessageDialog(this, 
+                        "Booking successful!\n\nSeats: " + seatNumbers + "\nTotal: ฿" + String.format("%.2f", totalPrice), 
+                        "Success", 
+                        JOptionPane.INFORMATION_MESSAGE);
+                    new ConcertList(userId, username);
+                    dispose();
+                }
             }
         });
         
         panel.add(confirmBtn);
         
         return panel;
+    }
+    
+    private void loadBookedSeats() {
+        try {
+            // Get all bookings for this concert
+            org.json.JSONArray bookings = SupabaseConfig.getAllBookings();
+            
+            for (int i = 0; i < bookings.length(); i++) {
+                JSONObject booking = bookings.getJSONObject(i);
+                
+                // Check if this booking is for the current concert
+                if (booking.getInt("concert_id") == concertId) {
+                    String seatNumbers = booking.getString("seat_numbers");
+                    
+                    // Parse seat numbers (e.g., "BLUEB-A1, BLUEB-A2")
+                    String[] seats = seatNumbers.split(",\\s*");
+                    for (String seat : seats) {
+                        bookedSeats.add(seat.trim());
+                    }
+                }
+            }
+            
+            System.out.println("Loaded " + bookedSeats.size() + " booked seats for concert " + concertId);
+        } catch (Exception e) {
+            System.err.println("Error loading booked seats: " + e.getMessage());
+            e.printStackTrace();
+        }
     }
 }
